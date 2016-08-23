@@ -2,6 +2,32 @@
 
 ## Next
 
+## 0.1.0-rc21
+ - More logging for ssh launcher.
+
+## 0.1.0-rc20
+ - Fix load private key generated with linux openssl.
+
+## 0.1.0-rc19
+ - Update docker-java dependency.
+ - Don't warn about 1.24 API.
+
+## 0.1.0-rc18
+ - Enhance usability: more help files, UI input validations.
+ - Added NPE debug code.
+ - Codecoverage is back.
+
+## 0.1.0-rc17
+ - Inject env vars for workflow-plugin.
+
+## 0.1.0-rc16
+ - Fix `Test Connection` in configuration.
+ - Allow set connector type `Netty` or `Jersey`.
+
+## 0.1.0-rc15
+ - Fix image.getRepoTags() NPE.
+ - Fix http -> tcp UI help.
+
 ## 0.1.0-rc14
  - Fix UI databinding for tlsVerify
 

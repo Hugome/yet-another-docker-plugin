@@ -7,11 +7,13 @@ import com.github.kostyasha.it.rule.DockerResource;
 import com.github.kostyasha.it.rule.DockerRule;
 import com.github.kostyasha.yad.DockerCloud;
 import com.github.kostyasha.yad.DockerConnector;
+import com.github.kostyasha.yad.DockerConnector.DescriptorImpl;
 import com.github.kostyasha.yad.DockerContainerLifecycle;
 import com.github.kostyasha.yad.DockerSlaveTemplate;
 import com.github.kostyasha.yad.commons.DockerPullImage;
 import com.github.kostyasha.yad.commons.DockerRemoveContainer;
 import com.github.kostyasha.yad.launcher.DockerComputerJNLPLauncher;
+import com.github.kostyasha.yad.other.ConnectorType;
 import com.github.kostyasha.yad.strategy.DockerOnceRetentionStrategy;
 import hudson.cli.DockerCLI;
 import hudson.model.FreeStyleBuild;
@@ -24,6 +26,7 @@ import hudson.slaves.EnvironmentVariablesNodeProperty.Entry;
 import hudson.slaves.JNLPLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.tasks.Shell;
+import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import jenkins.model.JenkinsLocationConfiguration;
 import org.hamcrest.Matchers;
@@ -32,6 +35,7 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExternalResource;
+import org.jvnet.hudson.test.For;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +50,7 @@ import static com.github.kostyasha.it.utils.JenkinsRuleHelpers.waitUntilNoActivi
 import static com.github.kostyasha.yad.commons.DockerImagePullStrategy.PULL_LATEST;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
 import static org.jvnet.hudson.test.JenkinsRule.getLog;
 import static org.mockito.Matchers.isNull;
@@ -62,7 +67,7 @@ public class SimpleBuildTest implements Serializable {
 
     //TODO redesign rule internals
     @ClassRule
-    public static DockerRule d = new DockerRule(true);
+    public static DockerRule d = new DockerRule(false);
 
     @Rule
     public MyResource dJenkins = new MyResource();
@@ -79,18 +84,34 @@ public class SimpleBuildTest implements Serializable {
         protected void before() throws Throwable {
             jenkinsId = d.runFreshJenkinsContainer(PULL_LATEST, false);
             cli = d.createCliForContainer(jenkinsId);
+            LOG.trace("CLI prepared, preparing cloud");
+            assertThat(cli, notNullValue());
+            assertThat(cli.jenkins, notNullValue());
+            assertThat(d, notNullValue());
+            assertThat(d.clientConfig, notNullValue());
 
-            caller(cli, new PrepareCloudCallable(
-                    cli.jenkins.getPort(),
-                    d.getDockerServerCredentials(),
-                    d.clientConfig.getDockerHost(),
-                    DockerRule.SLAVE_IMAGE_JNLP
-            ));
+            LOG.trace("Creating  PrepareCloudCallable object");
+            try {
+                final PrepareCloudCallable prepareCloudCallable = new PrepareCloudCallable(
+                        cli.jenkins.getPort(),
+                        d.getDockerServerCredentials(),
+                        d.clientConfig.getDockerHost(),
+                        DockerRule.SLAVE_IMAGE_JNLP
+                );
+                LOG.trace("Calling caller.");
+                caller(cli, prepareCloudCallable);
+            } catch (NullPointerException ex) {
+                LOG.error("HOW NPE HAPPENS HERE?!", ex);
+                LOG.trace("cli {}", cli);
+                LOG.trace("d.clientConfig {}", d.clientConfig);
+                throw ex;
+            }
         }
 
         @Override
         protected void after() {
             try {
+                LOG.trace("Closing CLI.");
                 cli.close();
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
@@ -104,7 +125,13 @@ public class SimpleBuildTest implements Serializable {
         private final URI dockerUri;
         private final String slaveImage;
 
-        public PrepareCloudCallable(int jenkinsPort, DockerServerCredentials credentials, URI dockerUri, String slaveImage) {
+        public PrepareCloudCallable(int jenkinsPort, DockerServerCredentials credentials,
+                                    URI dockerUri, String slaveImage) {
+            assertThat("jenkinsPort", jenkinsPort, notNullValue());
+            assertThat("credentials", credentials, notNullValue());
+            assertThat("dockerUri", dockerUri, notNullValue());
+            assertThat("slaveImage", slaveImage, notNullValue());
+
             this.jenkinsPort = jenkinsPort;
             this.dockerServerCredentials = credentials;
             this.dockerUri = dockerUri;
@@ -120,10 +147,15 @@ public class SimpleBuildTest implements Serializable {
 
             SystemCredentialsProvider.getInstance().getCredentials().add(dockerServerCredentials);
 
+            //verify doTestConnection
+            final DescriptorImpl descriptor = (DescriptorImpl) jenkins.getDescriptor(DockerConnector.class);
+            checkFormValidation(descriptor.doTestConnection(dockerUri.toString(), "",
+                    dockerServerCredentials.getId(), ConnectorType.NETTY));
+            checkFormValidation(descriptor.doTestConnection(dockerUri.toString(), "",
+                    dockerServerCredentials.getId(), ConnectorType.JERSEY));
+
             // prepare Docker Cloud
-            final DockerConnector dockerConnector = new DockerConnector(
-                    String.format("tcp://%s:%d", dockerUri.getHost(), dockerUri.getPort()));
-            dockerConnector.setTlsVerify(true);
+            final DockerConnector dockerConnector = new DockerConnector(dockerUri.toString());
             dockerConnector.setCredentialsId(dockerServerCredentials.getId());
             dockerConnector.testConnection();
 
@@ -172,6 +204,12 @@ public class SimpleBuildTest implements Serializable {
 
             return true;
         }
+
+        private static void checkFormValidation(FormValidation formValidation) throws FormValidation {
+            if (formValidation.kind != FormValidation.Kind.OK) {
+                throw formValidation;
+            }
+        }
     }
 
     @Test
@@ -191,7 +229,7 @@ public class SimpleBuildTest implements Serializable {
             project.setAssignedLabel(new LabelAtom(DOCKER_CLOUD_LABEL));
             project.save();
 
-            // test
+            LOG.trace("trace test.");
             project.scheduleBuild(new TestCause());
 
             // image pull may take time

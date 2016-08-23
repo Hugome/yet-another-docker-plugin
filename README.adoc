@@ -1,5 +1,6 @@
 # Yet Another Docker Plugin
 
+image:https://img.shields.io/badge/java-1.8-yellow.svg["Minimal java version"]
 image:https://scan.coverity.com/projects/9176/badge.svg?flat=1["Coverity Scan Build Status", link="https://scan.coverity.com/projects/kostyasha-yet-another-docker-plugin"]
 image:https://travis-ci.org/KostyaSha/yet-another-docker-plugin.svg?branch=master["Build Status", link="https://travis-ci.org/KostyaSha/yet-another-docker-plugin"]
 image:https://codecov.io/github/KostyaSha/yet-another-docker-plugin/coverage.svg?branch=master["codecov.io", link="http://codecov.io/github/christiangalsterer/httpbeat?branch=master"]
@@ -14,7 +15,7 @@ and left to this fork.
 
 ## Docs
 
-Will be in https://github.com/KostyaSha/yet-another-docker-plugin/wiki[GitHub wiki] because i wants to use GitHub with adoc
+Under link:/docs[docs directory]
 
 ## Goals
 
@@ -24,13 +25,15 @@ Will be in https://github.com/KostyaSha/yet-another-docker-plugin/wiki[GitHub wi
 
 ## Installation
 
-Main Jenkins Update center.
+Java 8 is required.
 
-If you don't want to change your Update Center, you can the download the `.hpi` from a mirror http://mirrors.jenkins-ci.org/plugins/yet-another-docker-plugin/ and upload it to Jenkins Plugin Manager.
+Main Jenkins Update center or Jucies.
+
+If you don't want to change your Update Center, you can download `.hpi` from the mirror http://mirrors.jenkins-ci.org/plugins/yet-another-docker-plugin/ or and upload it to Jenkins Plugin Manager.
 
 ## Disclaimer 
 
-- Backward compatibility may be broken in any time
+- Kept when it possible. Backward compatibility may be broken in any time.
 
 ## Questions
 
